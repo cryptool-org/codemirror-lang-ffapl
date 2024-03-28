@@ -3,6 +3,7 @@ import esbuild from "esbuild"
 const defaultConfig = {
   entryPoints: ["src/ffapl.js"],
   bundle: true,
+  minify: true,
   external: ["@lezer", "@codemirror"]
 }
 
