@@ -1,0 +1,245 @@
+@top Program {
+  kw<"program"> Identifier
+  ProgramBlock
+}
+
+Procedure {
+  kw<"procedure"> Identifier "(" (FormalParam (";" FormalParam)*)? ")"
+  Block
+}
+
+Function {
+  kw<"function"> Identifier "(" (FormalParam (";" FormalParam)*)? ")" ":" ParamType
+  FuncBlock
+}
+
+
+// Types
+
+PrimitiveType { type<"Integer"> | type<"Boolean"> | type<"String"> }
+
+AlgebraicType { type<"Prime"> | type<"Polynomial"> }
+
+ComplexAlgebraicType { type<"GF"> | type<"EC"> | type<"Z"> "()" ("[" Identifier "]")? }
+
+ExprComplexAlgebraicType {
+  type<"GF"> "(" Expression "," Expression ")" |
+  type<"EC"> "(" (type<"GF"> "(" Expression "," Expression ")" | type<"Z"> "(" Expression ")") ("," Identifier ":=" Expression)* ")" |
+  type<"Z"> "(" Expression ")" ("[" Identifier "]")?
+}
+
+RandomGeneratorType { type<"PseudoRandomGenerator"> | type<"RandomGenerator"> }
+
+ExprRandomGeneratorType {
+  type<"PseudoRandomGenerator"> "(" Expression "," Expression ")" |
+  type<"RandomGenerator"> "(" Expression (":" Expression)? ")"
+}
+
+ContainerType { type<"Record"> Decl* type<"EndRecord"> }
+
+
+ParamType {
+  RandomGeneratorType |
+  ComplexAlgebraicType "[]"* |
+  PrimitiveType "[]"* |
+  AlgebraicType "[]"*
+}
+
+DeclType {
+  ExprRandomGeneratorType |
+  ExprComplexAlgebraicType "[]"* |
+  PrimitiveType "[]"* |
+  AlgebraicType "[]"* |
+  ContainerType |
+  SameAs { type<"SameAs"> "(" Identifier ")" } |
+  ECBaseField { (type<"BaseGF"> | type<"BaseZ">) "(" Identifier ")" }
+}
+
+ConstType {
+  ExprComplexAlgebraicType |
+  PrimitiveType |
+  AlgebraicType
+}
+
+ArrayType {
+  PrimitiveType |
+  AlgebraicType |
+  ComplexAlgebraicType
+}
+
+
+// Declarations
+
+FormalParam {
+  Identifier ("," Identifier)* ":" ParamType
+}
+
+Decl {
+  Identifier ("," Identifier)* ":" DeclType ";"
+}
+
+ConstDecl {
+  kw<"const"> Identifier ":" ConstType ":=" Expression ";"
+}
+
+
+// Statements
+
+Selector { "[" Expression "]" Selector? | "." Identifier Selector? }
+
+Condition { "(" Expression ")" }
+
+
+ProcFuncCall { Identifier "(" (Expression ("," Expression)*)? ")" }
+
+Assignment { Identifier Selector? ":=" Expression }
+
+ECAssignment { "<<" Identifier "," Identifier ">>" ":=" Identifier }
+
+Statement {
+  ProcFuncCall |
+  Assignment |
+  ECAssignment |
+  kw<"break">
+}
+
+
+IfStatement { kw<"if"> Condition Block (kw<"else"> (IfStatement | Block))? }
+
+WhileStatement { kw<"while"> Condition Block }
+
+ForStatement { kw<"for"> Identifier "=" Expression kw<"to"> Expression (kw<"step"> Expression)? Block }
+
+BlockStatement {
+  IfStatement | WhileStatement | ForStatement
+}
+
+
+StatementList { (Statement ";" | BlockStatement)* }
+
+Block {
+  "{"
+    Decl*
+    StatementList
+  "}"
+}
+
+FuncBlock {
+  "{"
+    Decl*
+    StatementList
+    ReturnStatement { kw<"return"> Expression ";" }
+  "}"
+}
+
+ProgramBlock {
+  "{"
+    ConstDecl*
+    (Procedure | Function)*
+    Decl*
+    StatementList
+  "}"
+}
+
+
+// Expressions
+
+ArrayLen { "#" Identifier Selector? }
+
+CreationExpression { kw<"new"> ArrayType ("[ Expression ]")+ }
+
+Literal { boolean | Random | NumberLiteral | Polynomial | StringLiteral | ECPoint | ECRandom }
+
+Random { kw<"Random"> ("(" Expression (":" Expression)? ")")? }
+
+XTerm { kw<"x"> (ArithOp<"^"> PrimaryExpression)? }
+
+PolynomialTerm { ArithOp<"-">? XTerm | PrimaryExpression XTerm? }
+
+Polynomial { "[" PolynomialTerm (ArithOp<"+" | "-"> PolynomialTerm)* "]" }
+
+ECPoint { "<<" ((Expression "," Expression) | kw<"PAI">) ">>" }
+
+ECRandom { "<<" @specialize<Identifier, ("RandomPoint" | "RandomPointSubfield")> ">>" }
+
+PrimaryExpression {
+  Literal |
+  "(" Expression ")" |
+  ProcFuncCall |
+  Identifier Selector? |
+  ArrayLen |
+  "{" (Expression ("," Expression)*)? "}"
+}
+
+
+binaryExpression<expr, op> { expr (op expr)* }
+binaryExpression1<expr, op> { expr (op expr)? }
+
+CondXorExpr { binaryExpression<CondOrExpr, @specialize[@name=LogicOp]<Identifier, "XOR">> }
+CondOrExpr { binaryExpression<CondAndExpr, @specialize[@name=LogicOp]<Identifier, "OR">> }
+CondAndExpr { binaryExpression<EqualExpr, @specialize[@name=LogicOp]<Identifier, "AND">> }
+
+EqualExpr { binaryExpression1<RelExpr, CompareOp<"==" | "!=">> }
+RelExpr { binaryExpression1<AddExpr, CompareOp<"<=" | ">=" | "<" | ">">> }
+
+AddExpr { binaryExpression<MulExpr, ArithOp<"+" | "-">> }
+MulExpr { binaryExpression<PowExpr, (divide | ArithOp<"*"> | @specialize[@name=ArithOp]<Identifier, "MOD">)> }
+PowExpr { binaryExpression<UnaryExpr, ArithOp<"^">> }
+
+UnaryExpr { (ArithOp<"+" | "-"> | LogicOp<"!">)? PrimaryExpression }
+
+Expression {
+  CreationExpression | CondXorExpr
+}
+
+
+kw<word> { @specialize[@name={word}]<Identifier, word> }
+
+type<word> { @specialize[@name=PrimitiveType]<Identifier, word> }
+
+@skip {} {
+  BlockComment { "/*" (blockCommentContent | blockCommentNewline)* blockCommentEnd }
+}
+
+@skip { space | LineComment | BlockComment }
+
+@local tokens {
+  blockCommentEnd { "*/" }
+  blockCommentNewline { "\n" }
+  @else blockCommentContent
+}
+
+boolean { @specialize[@name=BooleanLiteral]<Identifier, "true" | "false"> }
+
+@tokens {
+  space { $[ \t\n\r]+ }
+
+  LineComment { "//" ![\n]* }
+
+  divide[@name=ArithOp] { "/" }
+
+  @precedence { "/*", LineComment, divide }
+
+  Identifier { (@asciiLetter | "_") (@asciiLetter | "_" | @digit)* }
+
+  @precedence { space, Identifier }
+
+  NumberLiteral { "0" | $[1-9] @digit* | "0x" $[a-fA-F0-9]+ }
+
+  StringLiteral { '"' ('\\"' | !["])* '"'}
+
+  ArithOp<expr> { expr }
+  CompareOp<expr> { expr }
+  LogicOp<expr> { expr }
+
+  "!"[@name=Not]
+  "="[@name=Equals]
+  ":="[@name=AssignOp]
+
+  "(" ")" "[" "]" "{" "}"
+  "<<" ">>" "." ":"
+}
+
+@external propSource highlight from "./highlight"
+
+@detectDelim

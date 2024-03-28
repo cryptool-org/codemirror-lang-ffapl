@@ -1,0 +1,30 @@
+{
+  "name": "codemirror-lang-ffapl",
+  "version": "0.0.2",
+  "description": "FFapl language support for CodeMirror",
+  "author": "Bernd Busse",
+  "license": "MIT",
+  "main": "dist/index.cjs",
+  "type": "module",
+  "exports": {
+    "import": "./dist/index.mjs",
+    "require": "./dist/index.cjs"
+  },
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "lezer-generator src/ffapl.grammar -o src/parser && node esbuild.mjs",
+    "prepare": "npm run build",
+    "test": "mocha test/test.js"
+  },
+  "dependencies": {
+    "@codemirror/language": "^6.10.1",
+    "@lezer/highlight": "^1.2.0",
+    "@lezer/lr": "^1.4.0"
+  },
+  "devDependencies": {
+    "@lezer/generator": "^1.7.0",
+    "esbuild": "^0.20.2",
+    "mocha": "^10.4.0"
+  }
+}

@@ -1,0 +1,26 @@
+import { styleTags, tags as t } from "@lezer/highlight"
+
+export const highlight = styleTags({
+  "program procedure function const": t.definitionKeyword,
+  "to step new": t.operatorKeyword,
+  "for while if else return break": t.controlKeyword,
+  BooleanLiteral: t.bool,
+  NumberLiteral: t.number,
+  StringLiteral: t.string,
+  LineComment: t.lineComment,
+  BlockComment: t.blockComment,
+  PrimitiveType: t.standard(t.typeName),
+  Identifier: t.variableName,
+  "ProcFuncCall/Identifier": t.function(t.variableName),
+  "Program/Identifier Procedure/Identifier Function/Identifier": t.function(t.definition(t.variableName)),
+  ArithOp: t.arithmeticOperator,
+  LogicOp: t.logicOperator,
+  CompareOp: t.compareOperator,
+  "Equals AssignOp": t.definitionOperator,
+  "( )": t.paren,
+  "[ ]": t.squareBracket,
+  "{ }": t.brace,
+  ".": t.derefOperator,
+  ", ;": t.separator,
+  "#": t.meta,
+})
